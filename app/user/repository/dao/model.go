@@ -1,5 +1,7 @@
 package dao
 
+import "gorm.io/gorm"
+
 type User struct {
 	Id          int32  `gorm:"primaryKey, autoIncrement"`
 	Email       string `gorm:"unique"`
@@ -11,4 +13,8 @@ type User struct {
 	CreateAt    int64
 	UpdateAt    int64
 	DeleteAt    int64
+}
+
+func InitAutoMigrateTable(db *gorm.DB) {
+	db.AutoMigrate(&User{})
 }

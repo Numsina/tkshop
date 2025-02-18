@@ -9,6 +9,7 @@ import (
 
 type UserRepository interface {
 	CreateUser(ctx context.Context, user domain.User) (int32, error)
+	DeleteUser(ctx context.Context, uid int32) error
 	UpdateUserByUid(ctx context.Context, user domain.User) (domain.User, error)
 	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
 }
@@ -25,6 +26,10 @@ func NewUserRepository(data dao.UserI) UserRepository {
 
 func (u *userRepo) CreateUser(ctx context.Context, user domain.User) (int32, error) {
 	return u.dao.CreateUser(ctx, u.toDao(user))
+}
+
+func (u *userRepo) DeleteUser(ctx context.Context, uid int32) error {
+	return u.dao.DeleteUser(ctx, uid)
 }
 
 func (u *userRepo) UpdateUserByUid(ctx context.Context, user domain.User) (domain.User, error) {
@@ -59,10 +64,10 @@ func (u *userRepo) toDomain(user dao.User) domain.User {
 	return domain.User{
 		Id:          user.Id,
 		Email:       user.Email,
+		Password:    user.Password,
 		NickName:    user.NickName,
 		Description: user.Description,
 		Avatar:      user.Avatar,
 		BirthDay:    user.BirthDay,
-		CreateAt:    user.CreateAt,
 	}
 }

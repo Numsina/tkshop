@@ -31,7 +31,7 @@ func NewUserHandler(svc service.UserService) *UserHandler {
 	}
 }
 
-func (u *UserHandler) singUp(ctx *gin.Context) {
+func (u *UserHandler) SingUp(ctx *gin.Context) {
 	var user domain.User
 	if err := ctx.BindJSON(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, "参数错误")
@@ -53,7 +53,10 @@ func (u *UserHandler) singUp(ctx *gin.Context) {
 		return
 	}
 
-	uid, err := u.svc.SignUp(ctx.Request.Context(), user)
+	uid, err := u.svc.SignUp(ctx.Request.Context(), domain.User{
+		Email:    user.Email,
+		Password: user.Password,
+	})
 	if err != nil {
 		// 可能是数据库的错误， 可能是加密的错误， 可能唯一主键的错误， 记录日志，
 		// 如果唯一主键错误，则返回已创建，否则内部错误
@@ -63,6 +66,43 @@ func (u *UserHandler) singUp(ctx *gin.Context) {
 		"msg":  "用户创建成功",
 		"data": uid,
 	})
+	return
+}
+
+func (u *UserHandler) Login(ctx *gin.Context) {
+	type login_req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req login_req
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, "参数错误")
+		return
+	}
+
+	if ok, _ := u.emailRegexp.MatchString(req.Email); !ok {
+		ctx.JSON(http.StatusOK, "邮箱或密码不正确")
+		return
+	}
+
+	if ok, _ := u.passwordRegexp.MatchString(req.Password); !ok {
+		ctx.JSON(http.StatusOK, "邮箱或密码不正确")
+		return
+	}
+
+	_, err := u.svc.Login(ctx.Request.Context(), domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+
+	if err != nil {
+		ctx.JSON(http.StatusOK, "登陆失败")
+		return
+	}
+
+	// 设置token或者cookie
+
+	ctx.JSON(http.StatusOK, "登陆成功")
 	return
 }
 
@@ -97,6 +137,39 @@ func (u *UserHandler) Update(ctx *gin.Context) {
 	return
 }
 
+func (u *UserHandler) Delete(ctx *gin.Context) {
+	type delete_req struct {
+		Uid int32 `json:"uid"`
+	}
+	var req delete_req
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, "参数错误")
+		return
+	}
+
+	// TODO
+	val, ok := ctx.Get("uid")
+	if !ok {
+		ctx.JSON(http.StatusUnauthorized, "身份未授权")
+		return
+	}
+	uid := val.(int32)
+
+	if uid != req.Uid {
+		ctx.JSON(http.StatusUnauthorized, "身份未授权")
+		return
+	}
+	err := u.svc.Delele(ctx.Request.Context(), req.Uid)
+
+	if err != nil {
+		ctx.JSON(http.StatusOK, "删除失败")
+		return
+	}
+
+	ctx.JSON(http.StatusOK, "删除成功")
+	return
+}
+
 func (u *UserHandler) GetUserByEmail(ctx *gin.Context) {
 	var email = ctx.Query("email")
 	if ok, _ := u.emailRegexp.MatchString(email); !ok {
@@ -106,7 +179,6 @@ func (u *UserHandler) GetUserByEmail(ctx *gin.Context) {
 
 	user, err := u.svc.GetUserInfoByEmail(ctx.Request.Context(), email)
 	if err != nil {
-		// 记录日志
 		ctx.JSON(http.StatusOK, "内部问题")
 		return
 	}

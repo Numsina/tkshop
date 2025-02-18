@@ -9,7 +9,16 @@ type User struct {
 	Description     string `json:"description"`
 	Avatar          string `json:"avatar"`
 	BirthDay        int64  `json:"birth_day"`
-	CreateAt        int64  `json:"create_at"`
-	UpdateAt        int64  `json:"update_at"`
-	DeleteAt        int64  `json:"delete_at"`
+	Address         string `json:"address"`
+}
+
+type UserResp struct {
+	Id          int32  `json:"id"`
+	Email       string `json:"email"`
+	NickName    string `json:"nick_name"`
+	Description string `json:"description"`
+	Avatar      string `json:"avatar"`
+	BirthDay    int64  `json:"birth_day"`
+	Address     string `json:"address"`
+	CreateAt    int64  `json:"create_at"`
 }

@@ -1,8 +1,14 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/Numsina/tkshop/app/router"
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
-	router := gin.Default()
-	router.Run()
+	r := gin.Default()
+
+	router.InitRouter(r)
+
+	r.Run(":9988")
 }

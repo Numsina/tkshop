@@ -17,6 +17,8 @@ message ListProductsReq{
   string categoryName = 3;
 }
 
+
+
 message Product {
   uint32 id = 1;
   string name = 2;
