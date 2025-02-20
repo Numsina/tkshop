@@ -17,6 +17,9 @@ func Cors() gin.HandlerFunc {
 			if strings.HasPrefix(origin, "http://127.0.0.1") {
 				return true
 			}
+			if strings.Contains(origin, "pphcemnbeeohhkhegacmjnocieklpbda") {
+				return true
+			}
 			return strings.Contains(origin, "http://localhost")
 		},
 		MaxAge: 12 * time.Hour,

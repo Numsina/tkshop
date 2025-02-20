@@ -14,7 +14,12 @@ type RedisConfig struct {
 	PassWord string `mapstructure:"password" json:"password"`
 }
 
+type JWTConfig struct {
+	Key string `mapstructure:"key" json:"key"`
+}
+
 type Config struct {
 	MysqlInfo MysqlConfig `mapstructure:"mysql" json:"mysql"`
 	RedisInfo RedisConfig `mapstructure:"redis" json:"redis"`
+	JwtInfo   JWTConfig   `mapstructure:"jwt" json:"jwt"`
 }

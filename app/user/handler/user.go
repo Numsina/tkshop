@@ -1,11 +1,15 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 
+	"github.com/Numsina/tkshop/app/middlewares"
 	"github.com/Numsina/tkshop/app/user/constant"
 	"github.com/Numsina/tkshop/app/user/domain"
 	"github.com/Numsina/tkshop/app/user/service"
@@ -18,9 +22,11 @@ type UserHandler struct {
 	NickNameRegexp *regexp.Regexp
 	PhoneRegexp    *regexp.Regexp
 	svc            service.UserService
+	jhl            *middlewares.JWT
+	logger         *zap.Logger
 }
 
-func NewUserHandler(svc service.UserService) *UserHandler {
+func NewUserHandler(svc service.UserService, jhl *middlewares.JWT, logger *zap.Logger) *UserHandler {
 	return &UserHandler{
 		emailRegexp:    regexp.MustCompile(constant.UserEmail, regexp.None),
 		passwordRegexp: regexp.MustCompile(constant.UserPassword, regexp.None),
@@ -28,10 +34,12 @@ func NewUserHandler(svc service.UserService) *UserHandler {
 		NickNameRegexp: regexp.MustCompile(constant.NickName, regexp.None),
 		PhoneRegexp:    regexp.MustCompile(constant.PhoneNumber, regexp.None),
 		svc:            svc,
+		jhl:            jhl,
+		logger:         logger,
 	}
 }
 
-func (u *UserHandler) SingUp(ctx *gin.Context) {
+func (u *UserHandler) SignUp(ctx *gin.Context) {
 	var user domain.User
 	if err := ctx.BindJSON(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, "参数错误")
@@ -90,7 +98,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 		return
 	}
 
-	_, err := u.svc.Login(ctx.Request.Context(), domain.User{
+	ue, err := u.svc.Login(ctx.Request.Context(), domain.User{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -101,8 +109,31 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	}
 
 	// 设置token或者cookie
+	// 生成session，并设置token
+	uid := uuid.New()
+	tokenString, err := u.jhl.SetToken(ctx, ue.Id, uid.String())
+	if err != nil {
+		u.logger.Error("生成token失败")
+		ctx.JSON(http.StatusOK, "登录失败")
+		return
+	}
+
+	ctx.Header("x-jwt-token", tokenString)
 
 	ctx.JSON(http.StatusOK, "登陆成功")
+	return
+}
+
+func (u *UserHandler) Logout(ctx *gin.Context) {
+	claims := ctx.Value("claims").(*middlewares.UserClaims)
+	log.Println(claims)
+	err := u.jhl.DeleteSsid(ctx, claims)
+	if err != nil {
+		u.logger.Info("删除ssid失败")
+		ctx.JSON(http.StatusOK, "退出登录失败")
+		return
+	}
+	ctx.JSON(http.StatusOK, "退出成功")
 	return
 }
 
@@ -170,7 +201,7 @@ func (u *UserHandler) Delete(ctx *gin.Context) {
 	return
 }
 
-func (u *UserHandler) GetUserByEmail(ctx *gin.Context) {
+func (u *UserHandler) 	GetUserByEmail(ctx *gin.Context) {
 	var email = ctx.Query("email")
 	if ok, _ := u.emailRegexp.MatchString(email); !ok {
 		ctx.JSON(http.StatusOK, "邮箱格式有误!!!")

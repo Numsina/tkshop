@@ -20,9 +20,10 @@ func (i ImageList) Value() (driver.Value, error) {
 type Categorys struct {
 	Id             int32      `gorm:"column:id;primaryKey;autoIncrement;not null"`
 	Name           string     `gorm:"column:name;type:varchar(30);not null"`
-	Level          int        `gorm:"column:level;type:int;not null;default:1;comment:'1代表一级分类, 2代表二级分类, 3代表三级分类'"`
+	Level          int        `gorm:"column:level;type:int;index;not null;default:1;comment:'1代表一级分类, 2代表二级分类, 3代表三级分类'"`
 	ParentId       int32      `gorm:"column:parentId;default:0;not null"`
 	ParentCategory *Categorys `gorm:"ForeignKey:ParentId;AssociationForeignKey:Id;constraint:OnDelete:CASCADE"`
+	RootId         int32      `gorm:"column:root_id;default:0;index;not null"`
 	CreateAt       int64      `gorm:"column:create_at"`
 	UpdateAt       int64      `gorm:"column:update_at"`
 	DeleteAt       int64      `gorm:"column:delete_at"`

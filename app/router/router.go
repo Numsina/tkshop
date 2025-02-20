@@ -8,6 +8,7 @@ import (
 )
 
 func InitRouter(r *gin.Engine) {
+	initMiddleWare(r)
 	v1 := r.Group("/v1")
 	userR.InitUserRouter(v1)
 	productR.InitProductRouter(v1)

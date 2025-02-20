@@ -9,3 +9,6 @@ redis:
   host: "192.168.32.1"
   port: 6379
   password: ""
+
+jwt:
+  key: "64d4R0yfBgtQARI8VZ6Rc6vII50mIbJp"

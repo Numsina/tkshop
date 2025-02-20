@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	"github.com/Numsina/tkshop/app/middlewares"
 	"github.com/Numsina/tkshop/app/user/handler"
 	"github.com/Numsina/tkshop/app/user/initialize"
 	"github.com/Numsina/tkshop/app/user/repository"
@@ -16,5 +17,6 @@ func InitUser() *handler.UserHandler {
 	entity := dao.NewUserDao(db, logger)
 	userRepo := repository.NewUserRepository(entity)
 	userSvc := service.NewUserSvc(userRepo, logger)
-	return handler.NewUserHandler(userSvc)
+	jhl := middlewares.NewJWT([]byte(initialize.Conf.JwtInfo.Key))
+	return handler.NewUserHandler(userSvc, jhl, logger)
 }
