@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/Numsina/tkshop/app/middlewares"
 	"github.com/Numsina/tkshop/app/products/domain"
 	"github.com/Numsina/tkshop/app/products/service"
 	"github.com/Numsina/tkshop/tools"
@@ -32,7 +33,11 @@ func (p *ProductHandler) Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, "参数错误")
 		return
 	}
-
+	claims := ctx.Value("claims").(*middlewares.UserClaims)
+	if pd.Uid != 0 && pd.Uid != claims.UserId {
+		return
+	}
+	pd.Uid = claims.UserId
 	products, err := p.svc.CraeteProduct(ctx.Request.Context(), pd)
 	if err != nil {
 		ctx.JSON(http.StatusOK, "创建失败")
@@ -52,7 +57,11 @@ func (p *ProductHandler) Update(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, "参数错误")
 		return
 	}
-
+	claims := ctx.Value("claims").(*middlewares.UserClaims)
+	if pd.Uid != 0 && pd.Uid != claims.UserId {
+		return
+	}
+	pd.Uid = claims.UserId
 	products, err := p.svc.UpdateProduct(ctx.Request.Context(), pd)
 	if err != nil {
 		ctx.JSON(http.StatusOK, "更新商品失败")
@@ -67,7 +76,7 @@ func (p *ProductHandler) Update(ctx *gin.Context) {
 }
 
 func (p *ProductHandler) GetProductsDetail(ctx *gin.Context) {
-	var id = ctx.Query("id")
+	var id = ctx.Param("id")
 	pid, err := strconv.Atoi(id)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, "参数错误")
@@ -78,6 +87,7 @@ func (p *ProductHandler) GetProductsDetail(ctx *gin.Context) {
 		return
 	}
 
+	claims := ctx.Value("claims").(*middlewares.UserClaims)
 	products, err := p.svc.GetProductInfoById(ctx.Request.Context(), int32(pid))
 	if err != nil {
 		ctx.JSON(http.StatusOK, "获取商品详情失败")
@@ -94,7 +104,7 @@ func (p *ProductHandler) GetProductsDetail(ctx *gin.Context) {
 
 	wg.Add(1)
 	go func() {
-		err := p.svc.IncreateClick(ctx.Request.Context(), products.Id)
+		err = p.svc.IncreateClick(ctx.Request.Context(), products.Id, claims.UserId)
 		if err != nil {
 			p.logger.Info("增加浏览量失败")
 		}
@@ -114,8 +124,8 @@ func (p *ProductHandler) DeleteProduct(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, "参数错误")
 		return
 	}
-
-	err := p.svc.DeleteProduct(ctx.Request.Context(), int32(req.Id))
+	claims := ctx.Value("claims").(*middlewares.UserClaims)
+	err := p.svc.DeleteProduct(ctx.Request.Context(), req.Id, claims.UserId)
 	if err != nil {
 		ctx.JSON(http.StatusOK, "商品删除失败")
 		return
@@ -199,10 +209,8 @@ func (p *ProductHandler) AddFavorite(ctx *gin.Context) {
 		return
 	}
 
-	// todo 待修改
-	// claims := ctx.Value("claims").(*middlewares.UserClaims)
-
-	err := p.svc.IncreateFavorite(ctx, req.Id)
+	claims := ctx.Value("claims").(*middlewares.UserClaims)
+	err := p.svc.IncreateFavorite(ctx, req.Id, claims.UserId)
 	if err != nil {
 		ctx.JSON(http.StatusOK, tools.Result{
 			Code: -1,

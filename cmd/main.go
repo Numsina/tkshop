@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/Numsina/tkshop/app/router"
 	"github.com/gin-gonic/gin"
+
+	"github.com/Numsina/tkshop/app/router"
 )
 
 func main() {

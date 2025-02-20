@@ -2,6 +2,9 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
+	"github.com/gin-gonic/gin"
 
 	"github.com/Numsina/tkshop/app/products/domain"
 	"github.com/Numsina/tkshop/app/products/repository/dao"
@@ -9,26 +12,43 @@ import (
 
 type Product interface {
 	CraeteOrUpdateProduct(ctx context.Context, p domain.Products) (domain.Products, error)
-	DeleteProduct(ctx context.Context, id int32) error
+	DeleteProduct(ctx context.Context, id, uid int32) error
 	GetProductInfoById(ctx context.Context, id int32) (domain.Products, error)
 	GetProductList(ctx context.Context, p domain.Products, pNum, pSize int32) ([]domain.Products, error)
-	AddClick(ctx context.Context, id int32) error
-	AddFavorite(ctx context.Context, id int32) error
+	AddClick(ctx context.Context, id, uid int32) error
+	AddFavorite(ctx context.Context, id, uid int32) error
 
 	GetCategoryById(ctx context.Context, id int32) (domain.Categorys, error)
 	GetCategoryByName(ctx context.Context, name string) (domain.Categorys, error)
 	CreateCategory(ctx context.Context, c domain.Categorys) (domain.Categorys, error)
 	UpdateCategory(ctx context.Context, c domain.Categorys) error
-	DeleteCategory(ctx context.Context, id int32) error
+	DeleteCategory(ctx context.Context, id, uid int32) error
+	GetCategoryList(ctx *gin.Context, num int32, size int32) ([]domain.Categorys, error)
 	GetBrandById(ctx context.Context, id int32) (domain.Brands, error)
 	GetBrandByName(ctx context.Context, name string) (domain.Brands, error)
 	CreateBrand(ctx context.Context, c domain.Brands) (domain.Brands, error)
 	UpdateBrand(ctx context.Context, c domain.Brands) error
-	DeleteBrand(ctx context.Context, id int32) error
+	DeleteBrand(ctx context.Context, id, uid int32) error
+	GetBrandList(ctx *gin.Context, num int32, size int32) ([]domain.Brands, error)
+	GetBrandByUid(ctx context.Context, uid int32) ([]domain.Brands, error)
 }
+
+var _ Product = &product{}
 
 type product struct {
 	d dao.Product
+}
+
+func (r *product) GetBrandByUid(ctx context.Context, uid int32) ([]domain.Brands, error) {
+	data, err := r.d.QueryBrandByUid(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	var result []domain.Brands
+	for _, v := range data {
+		result = append(result, r.toBrandDomain(v))
+	}
+	return result, nil
 }
 
 func NewProductRepo(d dao.Product) Product {
@@ -39,8 +59,26 @@ func NewProductRepo(d dao.Product) Product {
 缓存待优化
 */
 
-func (r *product) DeleteBrand(ctx context.Context, id int32) error {
-	return r.d.DeleteBrand(ctx, id)
+func (r *product) GetBrandList(ctx *gin.Context, num int32, size int32) ([]domain.Brands, error) {
+	if num <= 0 {
+		num = 1
+	}
+	if size < 20 {
+		size = 20
+	}
+	data, err := r.d.QueryBrandList(ctx, num, size)
+	if err != nil {
+		return nil, err
+	}
+	var result []domain.Brands
+	for _, v := range data {
+		result = append(result, r.toBrandDomain(v))
+	}
+	return result, nil
+}
+
+func (r *product) DeleteBrand(ctx context.Context, id, uid int32) error {
+	return r.d.DeleteBrand(ctx, id, uid)
 }
 
 func (r *product) UpdateBrand(ctx context.Context, c domain.Brands) error {
@@ -71,14 +109,33 @@ func (r *product) GetBrandById(ctx context.Context, id int32) (domain.Brands, er
 	return r.toBrandDomain(data), nil
 }
 
-func (r *product) DeleteCategory(ctx context.Context, id int32) error {
-	return r.d.DeleteCategory(ctx, id)
+func (r *product) GetCategoryList(ctx *gin.Context, num int32, size int32) ([]domain.Categorys, error) {
+	if num <= 0 {
+		num = 1
+	}
+	if size < 20 {
+		size = 20
+	}
+	data, err := r.d.QueryCategoryList(ctx, num, size)
+	if err != nil {
+		return nil, err
+	}
+	var result []domain.Categorys
+	for _, v := range data {
+		result = append(result, r.toCategoryDomain(v))
+	}
+	return result, nil
+}
+
+func (r *product) DeleteCategory(ctx context.Context, id, uid int32) error {
+	return r.d.DeleteCategory(ctx, id, uid)
 }
 
 func (r *product) UpdateCategory(ctx context.Context, c domain.Categorys) error {
 	return r.d.UpdateCategory(ctx, r.toCategoryDao(c))
 }
 func (r *product) CreateCategory(ctx context.Context, c domain.Categorys) (domain.Categorys, error) {
+
 	data, err := r.d.InsertCategory(ctx, r.toCategoryDao(c))
 	if err != nil {
 		return domain.Categorys{}, err
@@ -140,21 +197,27 @@ func (r *product) GetProductList(ctx context.Context, p domain.Products, pNum, p
 	return data, nil
 }
 
-func (r *product) AddClick(ctx context.Context, id int32) error {
-	return r.d.AddClick(ctx, id)
+func (r *product) AddClick(ctx context.Context, id, uid int32) error {
+	return r.d.AddClick(ctx, id, uid)
 }
 
-func (r *product) AddFavorite(ctx context.Context, id int32) error {
-	return r.d.AddFavorite(ctx, id)
+func (r *product) AddFavorite(ctx context.Context, id, uid int32) error {
+	return r.d.AddFavorite(ctx, id, uid)
 }
 
 func (r *product) CraeteOrUpdateProduct(ctx context.Context, p domain.Products) (domain.Products, error) {
+	sn := fmt.Sprintf("%s:%d:%d:%d", p.Name, p.CategoryId, p.BrandId, p.Uid)
+	if err := r.d.GetProductBySn(ctx, sn); err != nil {
+		return domain.Products{}, err
+	}
+	p.Sn = sn
 	data, err := r.d.UpsertProduct(ctx, r.toDao(p))
+
 	return r.toDomain(data), err
 }
 
-func (r *product) DeleteProduct(ctx context.Context, id int32) error {
-	return r.d.DeleteProduct(ctx, id)
+func (r *product) DeleteProduct(ctx context.Context, id, uid int32) error {
+	return r.d.DeleteProduct(ctx, id, uid)
 }
 
 func (r *product) GetProductInfoById(ctx context.Context, id int32) (domain.Products, error) {
@@ -168,6 +231,7 @@ func (r *product) toDao(p domain.Products) dao.Products {
 		Name:        p.Name,
 		CategoryId:  p.CategoryId,
 		BrandId:     p.BrandId,
+		Uid:         p.Uid,
 		Description: p.Description,
 		IsNew:       p.IsNew,
 		IsHot:       p.IsHot,
@@ -179,6 +243,7 @@ func (r *product) toDao(p domain.Products) dao.Products {
 		ShopPrice:   p.ShopPrice,
 		Picture:     p.Picture,
 		Images:      p.Images,
+		Sn:          p.Sn,
 	}
 }
 
@@ -204,36 +269,35 @@ func (r *product) toDomain(p dao.Products) domain.Products {
 
 func (r *product) toCategoryDomain(c dao.Categorys) domain.Categorys {
 	data := domain.Categorys{
-		Id:       c.Id,
-		Name:     c.Name,
-		Level:    c.Level,
-		ParentId: c.ParentId,
-
-		RootId: c.RootId,
+		Id:    c.Id,
+		Name:  c.Name,
+		Level: c.Level,
+	}
+	if c.ParentId.Valid {
+		data.ParentId = c.ParentId.Int32
 	}
 
-	if c.ParentCategory != nil {
-		data.ParentCategory = &domain.Categorys{
-			Id: c.ParentCategory.Id,
-		}
+	if c.RootId.Valid {
+		data.RootId = c.RootId.Int32
 	}
+
 	return data
 }
 
 func (r *product) toCategoryDao(c domain.Categorys) dao.Categorys {
 	data := dao.Categorys{
-		Id:       c.Id,
-		Name:     c.Name,
-		Level:    c.Level,
-		ParentId: c.ParentId,
-
-		RootId: c.RootId,
-	}
-
-	if c.ParentCategory != nil {
-		data.ParentCategory = &dao.Categorys{
-			Id: c.ParentCategory.Id,
-		}
+		Id:    c.Id,
+		Name:  c.Name,
+		Level: c.Level,
+		Uid:   c.Uid,
+		ParentId: sql.NullInt32{
+			Int32: c.ParentId,
+			Valid: c.ParentId == 0,
+		},
+		RootId: sql.NullInt32{
+			Int32: c.RootId,
+			Valid: c.RootId == 0,
+		},
 	}
 	return data
 }
@@ -252,6 +316,7 @@ func (r *product) toBrandDao(b domain.Brands) dao.Brands {
 		Id:   b.Id,
 		Name: b.Name,
 		Logo: b.Logo,
+		Uid:  b.Uid,
 	}
 	return data
 }

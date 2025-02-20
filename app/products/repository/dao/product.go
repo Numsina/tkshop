@@ -16,21 +16,25 @@ var (
 
 type Product interface {
 	UpsertProduct(ctx context.Context, p Products) (Products, error)
-	DeleteProduct(ctx context.Context, id int32) error
+	DeleteProduct(ctx context.Context, id, uid int32) error
 	QueryProductInfoById(ctx context.Context, id int32) (Products, error)
 	QueryProductList(ctx context.Context, p Products, pNum, pSize int32) ([]Products, error)
-	AddClick(ctx context.Context, id int32) error
-	AddFavorite(ctx context.Context, id int32) error
+	AddClick(ctx context.Context, id, uid int32) error
+	AddFavorite(ctx context.Context, id, uid int32) error
+	GetProductBySn(ctx context.Context, sn string) error
+	QueryCategoryList(ctx context.Context, num, size int32) ([]Categorys, error)
 	QueryCategoryById(ctx context.Context, id int32) (Categorys, error)
 	QueryCategoryByName(ctx context.Context, name string) (Categorys, error)
 	InsertCategory(ctx context.Context, c Categorys) (Categorys, error)
 	UpdateCategory(ctx context.Context, c Categorys) error
-	DeleteCategory(ctx context.Context, id int32) error
+	DeleteCategory(ctx context.Context, id, uid int32) error
 	QueryBrandById(ctx context.Context, id int32) (Brands, error)
 	QueryBrandByName(ctx context.Context, name string) (Brands, error)
 	InsertBrand(ctx context.Context, c Brands) (Brands, error)
 	UpdateBrand(ctx context.Context, c Brands) error
-	DeleteBrand(ctx context.Context, id int32) error
+	DeleteBrand(ctx context.Context, id, uid int32) error
+	QueryBrandList(ctx context.Context, num, size int32) ([]Brands, error)
+	QueryBrandByUid(ctx context.Context, uid int32) ([]Brands, error)
 }
 
 var _ Product = &product{}
@@ -86,7 +90,7 @@ func (this *product) QueryProductList(ctx context.Context, p Products, pNum, pSi
 			return nil, errors.New("商品分类不存在")
 		}
 
-		if category.ParentId == 0 {
+		if category.ParentId.Valid {
 			result = this.db.WithContext(ctx).Model(&Categorys{}).Select("id").Where("root_id = ? AND level = 3", category.RootId, category.ParentId).Find(&categorys)
 		} else {
 			result = this.db.WithContext(ctx).Model(&Categorys{}).Select("id").Where("root_id = ? parentId = ? AND level = 3", category.RootId, category.ParentId).Find(&categorys)
@@ -107,7 +111,7 @@ func (this *product) QueryProductList(ctx context.Context, p Products, pNum, pSi
 		state = state.Where("category_id in ?", ids...)
 	}
 
-	off := (pNum-1)*pSize + pSize
+	off := (pNum - 1) * pSize
 
 	var ps []Products
 	if err := state.Offset(int(off)).Limit(int(pSize)).Find(&ps).Error; err != nil {
@@ -133,6 +137,7 @@ func (this *product) UpsertProduct(ctx context.Context, p Products) (Products, e
 			"on_sale":     p.OnSale,
 			"click":       p.Click,
 			"sale":        p.Sale,
+			"uid":         p.Uid,
 			"favorite":    p.Favorite,
 			"mark_price":  p.MarkPrice,
 			"shop_price":  p.ShopPrice,
@@ -148,12 +153,12 @@ func (this *product) UpsertProduct(ctx context.Context, p Products) (Products, e
 	}
 
 	// 查询商品的分类及品牌是否存在
-	if err := tx.Model(&Categorys{}).Where("id = ?", p.CategoryId).Error; err != nil {
+	if err := tx.Model(&Categorys{}).Where("id = ?", p.CategoryId).First(&Categorys{}).Error; err != nil {
 		tx.Rollback()
 		return Products{}, err
 	}
 
-	if err := tx.Model(&Brands{}).Where("id = ?", p.BrandId).Error; err != nil {
+	if err := tx.Model(&Brands{}).Where("id = ?", p.BrandId).First(&Brands{}).Error; err != nil {
 		tx.Rollback()
 		return Products{}, err
 	}
@@ -172,10 +177,10 @@ func (this *product) UpsertProduct(ctx context.Context, p Products) (Products, e
 	return p, err
 }
 
-func (this *product) DeleteProduct(ctx context.Context, id int32) error {
-	now := time.Now().UnixMilli()
-	if err := this.db.WithContext(ctx).Where("id = ?", id).Updates(Products{DeleteAt: now}).Error; err != nil {
-		if errors.Is(err, ErrRecordNotFound) {
+func (this *product) DeleteProduct(ctx context.Context, id, uid int32) error {
+
+	if err := this.db.WithContext(ctx).Delete(&Products{Id: id, Uid: uid}).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrRecordNotFound
 		}
 		return err
@@ -197,16 +202,77 @@ func (this *product) QueryProductInfoById(ctx context.Context, id int32) (Produc
 	return p, nil
 }
 
-func (this *product) AddClick(ctx context.Context, id int32) error {
-	if err := this.db.WithContext(ctx).Where("id = ?", id).Update("click", gorm.Expr("click + 1")).Error; err != nil {
+func (this *product) AddClick(ctx context.Context, id, uid int32) error {
+	var r ProductRecord
+	result := this.db.WithContext(ctx).Model(&ProductRecord{}).Where("id = ? AND uid = ?", id, uid).First(&r)
+	if result.Error != nil {
+		return result.Error
+	}
+	now := time.Now().UnixMilli()
+	if !r.Look {
+		err := this.db.WithContext(ctx).Create(&ProductRecord{
+			ProductId: id,
+			Uid:       uid,
+			CreateAt:  now,
+			UpdateAt:  now,
+		}).Error
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := this.db.WithContext(ctx).Model(&Products{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"click":     gorm.Expr("click + 1"),
+		"update_at": now,
+	}).Error; err != nil {
+		this.logger.Error(err.Error())
 		return err
 	}
 	return nil
 }
 
-func (this *product) AddFavorite(ctx context.Context, id int32) error {
-	if err := this.db.WithContext(ctx).Where("id = ?", id).Update("favorite", gorm.Expr("favorite + 1")).Error; err != nil {
+func (this *product) AddFavorite(ctx context.Context, id, uid int32) error {
+	var r ProductRecord
+	result := this.db.WithContext(ctx).Where("id = ? AND uid = ?", id, uid).First(&r)
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return result.Error
+	}
+
+	if r.Like {
+		return errors.New("请勿重复收藏")
+	}
+
+	if err := this.db.WithContext(ctx).Create(&ProductRecord{
+		ProductId: id,
+		Uid:       uid,
+		Like:      true,
+		Look:      true,
+		CreateAt:  time.Now().UnixMilli(),
+		UpdateAt:  time.Now().UnixMilli(),
+	}).Error; err != nil {
 		return err
+	}
+
+	// 这边加没加上不重要
+	if err := this.db.WithContext(ctx).Model(&Products{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"favorite":  gorm.Expr("favorite + 1"),
+		"update_at": time.Now().UnixMilli(),
+	}).Error; err != nil {
+		this.logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+func (this *product) GetProductBySn(ctx context.Context, sn string) error {
+	result := this.db.WithContext(ctx).Where("sn = ?", sn).First(&Products{})
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	if result.Error != nil {
+		this.logger.Error(result.Error.Error())
+		return result.Error
 	}
 	return nil
 }

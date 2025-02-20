@@ -18,18 +18,22 @@ type Products struct {
 	ShopPrice    float32  `json:"shop_price"`
 	Picture      string   `json:"picture"`
 	Images       []string `json:"images"`
+	Sn           string   `json:"sn"`
+	Uid          int32    `json:"uid"`
 }
 
 type Brands struct {
 	Id   int32  `json:"id"`
 	Name string `json:"name"`
 	Logo string `json:"logo"`
+	Uid  int32  `json:"uid"`
 }
 
 type Categorys struct {
 	Id             int32      `json:"id"`
 	Name           string     `json:"name"`
 	Level          int        `json:"level"`
+	Uid            int32      `json:"uid"`
 	ParentId       int32      `json:"parent_id"`
 	ParentCategory *Categorys `json:"parent_category"`
 	RootId         int32      `json:"root_id"`

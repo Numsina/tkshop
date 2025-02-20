@@ -24,7 +24,8 @@ func InitProductRouter(router *gin.RouterGroup) {
 		categoryRouter.POST("", route.CreateCategory)
 		categoryRouter.PUT("", route.UpdateCategory)
 		categoryRouter.DELETE("", route.DeleteCategory)
-		// categoryRouter.POST("/list", route.Get)
+		categoryRouter.GET("", route.GetCategoryByName)
+		categoryRouter.POST("/list", route.GetCategoryList)
 	}
 
 	brandRouter := router.Group("/brands")
@@ -33,6 +34,6 @@ func InitProductRouter(router *gin.RouterGroup) {
 		brandRouter.POST("", route.CreateBrand)
 		brandRouter.PUT("", route.UpdateBrand)
 		brandRouter.DELETE("", route.DeleteBrand)
-		// brandRouter.POST("/list", route.GetGetBrandList)
+		brandRouter.POST("/list", route.GetBrandList)
 	}
 }

@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 
@@ -18,21 +19,22 @@ func (i ImageList) Value() (driver.Value, error) {
 }
 
 type Categorys struct {
-	Id             int32      `gorm:"column:id;primaryKey;autoIncrement;not null"`
-	Name           string     `gorm:"column:name;type:varchar(30);not null"`
-	Level          int        `gorm:"column:level;type:int;index;not null;default:1;comment:'1代表一级分类, 2代表二级分类, 3代表三级分类'"`
-	ParentId       int32      `gorm:"column:parentId;default:0;not null"`
-	ParentCategory *Categorys `gorm:"ForeignKey:ParentId;AssociationForeignKey:Id;constraint:OnDelete:CASCADE"`
-	RootId         int32      `gorm:"column:root_id;default:0;index;not null"`
-	CreateAt       int64      `gorm:"column:create_at"`
-	UpdateAt       int64      `gorm:"column:update_at"`
-	DeleteAt       int64      `gorm:"column:delete_at"`
+	Id       int32         `gorm:"column:id;primaryKey;autoIncrement;not null"`
+	Name     string        `gorm:"column:name;type:varchar(30);not null"`
+	Level    int           `gorm:"column:level;type:int;index;not null;default:1;comment:'1代表一级分类, 2代表二级分类, 3代表三级分类'"`
+	ParentId sql.NullInt32 `gorm:"column:parentId;default:0;not null"`
+	RootId   sql.NullInt32 `gorm:"column:root_id;default:0;index;not null"`
+	Uid      int32         `gorm:"column:uid;not null"`
+	CreateAt int64         `gorm:"column:create_at"`
+	UpdateAt int64         `gorm:"column:update_at"`
+	DeleteAt int64         `gorm:"column:delete_at"`
 }
 
 type BrandCategorys struct {
 	Id         int32 `gorm:"column:id;primaryKey;autoIncrement;not null"`
 	BrandId    int32 `gorm:"column:brand_id;uniqueIndex:idx_brand_category;not null"`
 	CategoryId int32 `gorm:"column:category_id;uniqueIndex:idx_brand_category;not null"`
+	Uid        int32 `gorm:"column:uid;not null"`
 	CreateAt   int64 `gorm:"column:create_at"`
 	UpdateAt   int64 `gorm:"column:update_at"`
 	DeleteAt   int64 `gorm:"column:delete_at"`
@@ -42,6 +44,7 @@ type Brands struct {
 	Id       int32  `gorm:"column:id;primaryKey;autoIncrement;not null"`
 	Name     string `gorm:"column:name;type:varchar(30);unique;not null"`
 	Logo     string `gorm:"column:logo;type:varchar(200);not null"`
+	Uid      int32  `gorm:"column:uid;not null"`
 	CreateAt int64  `gorm:"column:create_at"`
 	UpdateAt int64  `gorm:"column:update_at"`
 	DeleteAt int64  `gorm:"column:delete_at"`
@@ -53,6 +56,8 @@ type Products struct {
 	CategoryId  int32     `gorm:"column:category_id;not null"`
 	BrandId     int32     `gorm:"column:brand_id;not null"`
 	Description string    `gorm:"column:description;type:varchar(255);not null"`
+	Sn          string    `gorm:"column:sn;unique;type:varchar(255);not null"`
+	Uid         int32     `gorm:"column:uid;not null"`
 	IsNew       bool      `gorm:"column:is_new;not null"`
 	IsHot       bool      `gorm:"column:is_hot;not null"`
 	OnSale      bool      `gorm:"column:on_sale;not null"`
@@ -68,6 +73,17 @@ type Products struct {
 	DeleteAt    int64     `gorm:"column:delete_at"`
 }
 
+type ProductRecord struct {
+	Id        int32 `gorm:"column:id;primaryKey;autoIncrement;not null"`
+	ProductId int32 `gorm:"column:product_id;uniqueIndex:idx_prod_u;index;not null"`
+	Uid       int32 `gorm:"column:uid;uniqueIndex:idx_prod_u;index;not null"`
+	Like      bool  `gorm:"column:like;not null"`
+	Look      bool  `gorm:"column:look;not null"`
+	CreateAt  int64 `gorm:"column:create_at"`
+	UpdateAt  int64 `gorm:"column:update_at"`
+	DeleteAt  int64 `gorm:"column:delete_at"`
+}
+
 func InitTable(db *gorm.DB) {
-	db.AutoMigrate(&Categorys{}, &Brands{}, &BrandCategorys{}, &Products{})
+	db.AutoMigrate(&Categorys{}, &Brands{}, &BrandCategorys{}, &Products{}, &ProductRecord{})
 }
