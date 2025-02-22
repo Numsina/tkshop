@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,7 @@ func (l *LoginJWTMiddleWareBuilder) Build() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// 跳过不需要检查的路径
 		for _, v := range l.paths {
-			if ctx.Request.URL.Path == v {
+			if ctx.Request.URL.Path == v || strings.Contains(ctx.Request.URL.Path, "/swagger") {
 				return
 			}
 		}

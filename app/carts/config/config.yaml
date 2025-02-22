@@ -1,0 +1,11 @@
+mysql:
+  host: "192.168.84.10"
+  port: 13306
+  username: "root"
+  password: "123456"
+  dbname: "tkshop"
+
+redis:
+  host: "192.168.84.10"
+  port: 6379
+  password: ""

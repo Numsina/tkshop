@@ -13,6 +13,6 @@ func initMiddleWare(r *gin.Engine) {
 	jhl := middlewares.NewJWT([]byte(initialize.Conf.JwtInfo.Key))
 	auth := middlewares.NewLoginJWTMiddleWareBuilder(jhl)
 	r.Use(auth.IngorePaths("/v1/users/signup").
-		IngorePaths("/v1/users/login").Build(),
+		IngorePaths("/v1/users/login").IngorePaths("/swagger/index.html").Build(),
 	)
 }
