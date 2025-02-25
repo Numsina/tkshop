@@ -14,7 +14,7 @@ func InitProductRouter(router *gin.RouterGroup) {
 		productRouter.POST("", route.Create)
 		productRouter.PUT("", route.Update)
 		productRouter.DELETE("", route.DeleteProduct)
-		productRouter.POST("/list", route.GetProductsList)
+		productRouter.GET("/list", route.GetProductsList)
 		productRouter.POST("/like", route.AddFavorite)
 	}
 

@@ -15,6 +15,8 @@ type Cart interface {
 	UpdateCarts(ctx context.Context, cart Carts) error
 	ClearCarts(ctx context.Context, uid int32) error
 	QueryCartsInfo(ctx context.Context, uid int32) ([]Carts, error)
+	FindSelected(ctx context.Context, uid int32, checked bool) ([]Carts, error)
+	BatchDeleteCarts(ctx context.Context, ids []int32, uid int32) error
 }
 
 var _ Cart = &cart{}
@@ -29,6 +31,25 @@ func New(db *gorm.DB, logger *zap.Logger) Cart {
 		db:     db,
 		logger: logger,
 	}
+}
+
+func (c *cart) BatchDeleteCarts(ctx context.Context, ids []int32, uid int32) error {
+	err := c.db.WithContext(ctx).Where("id in (?) AND uid = ?", ids, uid).Delete(&Carts{}).Error
+	if err != nil {
+		c.logger.Error("failed to delete cart by id", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (c *cart) FindSelected(ctx context.Context, uid int32, checked bool) ([]Carts, error) {
+	var data []Carts
+	err := c.db.WithContext(ctx).Where("user_id = ? AND checked = ?", uid, checked).First(&data).Error
+	if err != nil {
+		c.logger.Error("find selected cart failed", zap.Error(err))
+		return nil, err
+	}
+	return data, nil
 }
 
 func (c *cart) InsertCarts(ctx context.Context, cart Carts) error {

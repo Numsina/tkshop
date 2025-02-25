@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -153,17 +154,21 @@ func (p *ProductHandler) GetProductsList(ctx *gin.Context) {
 		PNum         int32   `json:"pNum"`
 		PSize        int32   `json:"pSize"`
 	}
-	var data list_req
-	if err := ctx.Bind(&data); err != nil {
-		p.logger.Error(err.Error())
-		ctx.JSON(http.StatusBadRequest, tools.Result{
-			// 错误码待设计
-			// todo
-			Code: 0,
-			Msg:  "参数错误",
-		})
-		return
+	var data = list_req{
+		PNum:  1,
+		PSize: 2,
 	}
+	fmt.Println(data.Name)
+	//if err := ctx.Bind(&data); err != nil {
+	//	p.logger.Error(err.Error())
+	//	ctx.JSON(http.StatusBadRequest, tools.Result{
+	//		// 错误码待设计
+	//		// todo
+	//		Code: 0,
+	//		Msg:  "参数错误",
+	//	})
+	//	return
+	//}
 
 	products, err := p.svc.GetProductList(ctx.Request.Context(), domain.Products{
 		Name:         data.Name,

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package  checkout;
 
-import "api/payment.proto";
+import "tkshop/api/payment.proto";
 
 option go_package = "/checkout";
 

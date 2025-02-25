@@ -9,6 +9,9 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/prometheus"
+
+	"github.com/Numsina/tkshop/pkg/gormx"
 )
 
 var db *gorm.DB
@@ -31,14 +34,36 @@ func InitDB() *gorm.DB {
 		)
 
 		var err error
-		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+		db, err = gorm.Open(mysql.New(mysql.Config{
+			DSN:                       dsn,
+			SkipInitializeWithVersion: true,
+		}), &gorm.Config{
 			Logger:                 newLogger,
 			SkipDefaultTransaction: true,
 		})
+
 		if err != nil {
 			panic(err)
 		}
-
+		gormx.InitJaeger()
+		use(db)
 	}
 	return db
+}
+
+func use(db *gorm.DB) {
+	// 监控mysql线程的运行数量
+	db.Use(prometheus.New(prometheus.Config{
+		DBName:          "tkshop",
+		RefreshInterval: 15,
+		StartServer:     false,
+		MetricsCollector: []prometheus.MetricsCollector{
+			&prometheus.MySQL{
+				VariableNames: []string{"thread_running"},
+			},
+		},
+	}))
+	db.Use(gormx.NewCallbacks())
+	db.Use(gormx.NewJaegerTracer())
+
 }

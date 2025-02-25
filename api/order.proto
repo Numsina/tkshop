@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package order;
 
-import "api/cart.proto";
+import "tkshop/api/cart.proto";
 
 option go_package = "order";
 

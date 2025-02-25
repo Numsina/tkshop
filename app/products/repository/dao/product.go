@@ -35,6 +35,7 @@ type Product interface {
 	DeleteBrand(ctx context.Context, id, uid int32) error
 	QueryBrandList(ctx context.Context, num, size int32) ([]Brands, error)
 	QueryBrandByUid(ctx context.Context, uid int32) ([]Brands, error)
+	BatchProductsByIds(ctx context.Context, ids []int32) ([]Products, error)
 }
 
 var _ Product = &product{}
@@ -44,7 +45,18 @@ type product struct {
 	logger *zap.Logger
 }
 
+func (this *product) BatchProductsByIds(ctx context.Context, ids []int32) ([]Products, error) {
+	var data []Products
+	err := this.db.WithContext(ctx).Where("id in (?)", ids).Find(&data).Error
+	if err != nil {
+		this.logger.Error("record not found", zap.Error(err))
+		return nil, err
+	}
+	return data, nil
+}
+
 func (this *product) QueryProductList(ctx context.Context, p Products, pNum, pSize int32) ([]Products, error) {
+
 	state := this.db.WithContext(ctx).Model(&Products{})
 
 	if p.BrandId > 0 {

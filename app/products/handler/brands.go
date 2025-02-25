@@ -8,20 +8,9 @@ import (
 
 	"github.com/Numsina/tkshop/app/middlewares"
 	"github.com/Numsina/tkshop/app/products/domain"
-	_ "github.com/Numsina/tkshop/cmd/docs"
 	"github.com/Numsina/tkshop/tools"
 )
 
-// @Summary 根据品牌 ID 获取品牌信息
-// @Description 通过指定的品牌 ID 来获取对应的品牌信息
-// @Tags 品牌管理
-// @Accept json
-// @Produce json
-// @Param id path int true "品牌 ID"
-// @Success 200 {object} tools.Result{data=Brand} "获取成功，返回品牌信息"
-// @Failure 400 {object} tools.Result "参数错误"
-// @Failure 200 {object} tools.Result "获取失败，返回错误信息"
-// @Router /brands/{id} [get]
 func (p *ProductHandler) GetBrandById(ctx *gin.Context) {
 	id := ctx.Param("id")
 	pid, err := strconv.Atoi(id)
